@@ -1,12 +1,13 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
 import MapView, { Heatmap, Marker } from "react-native-maps";
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import FeatherIcon from "react-native-vector-icons/Feather";
 import { KeyboardAvoidingView } from "react-native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
+import BottomSheet from 'react-native-simple-bottom-sheet';
 
 export default function App({ navigation }) {
   const [heatmaps, setHeatmaps] = useState([]);
@@ -16,7 +17,7 @@ export default function App({ navigation }) {
     lng: -2.9124057,
   });
   const [markerLocation, setMarkerLocation] = useState({});
-
+  const panelRef = useRef(null);
   async function getUserLocation() {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -333,10 +334,10 @@ export default function App({ navigation }) {
                 });
                 const crimeCount =
                   locationCrimeMap[
-                    Object.keys(locationCrimeMap).filter((value, index) => {
-                      if (value.includes(city.split(" ")[0].toLowerCase()))
-                        return value;
-                    })[0]
+                  Object.keys(locationCrimeMap).filter((value, index) => {
+                    if (value.includes(city.split(" ")[0].toLowerCase()))
+                      return value;
+                  })[0]
                   ];
 
                 // Getting first type of crime reports count
@@ -350,12 +351,12 @@ export default function App({ navigation }) {
                 });
                 const firstCrimeCount =
                   locationFirstCrimeMap[
-                    Object.keys(locationFirstCrimeMap).filter(
-                      (value, index) => {
-                        if (value.includes(city.split(" ")[0].toLowerCase()))
-                          return value;
-                      }
-                    )[0]
+                  Object.keys(locationFirstCrimeMap).filter(
+                    (value, index) => {
+                      if (value.includes(city.split(" ")[0].toLowerCase()))
+                        return value;
+                    }
+                  )[0]
                   ];
 
                 // Getting second type of crime reports count
@@ -369,12 +370,12 @@ export default function App({ navigation }) {
                 });
                 const secondCrimeCount =
                   locationSecondCrimeMap[
-                    Object.keys(locationSecondCrimeMap).filter(
-                      (value, index) => {
-                        if (value.includes(city.split(" ")[0].toLowerCase()))
-                          return value;
-                      }
-                    )[0]
+                  Object.keys(locationSecondCrimeMap).filter(
+                    (value, index) => {
+                      if (value.includes(city.split(" ")[0].toLowerCase()))
+                        return value;
+                    }
+                  )[0]
                   ];
 
                 // Setting the heatmap data
@@ -448,190 +449,200 @@ export default function App({ navigation }) {
           )}
         </MapView>
 
-        <View style={[styles.mapBottomContainer]}>
+        <BottomSheet
+          isOpen={false}
+          sliderMaxHeight={200}
+          sliderMinHeight={100}
+          ref={ref => panelRef.current = ref}
+        >
           <TouchableOpacity
             style={{
               position: "absolute",
-              top: -70,
-              right: 30,
+              top: -120,
+              right: 10,
             }}
             onPress={() => {
-              getUserLocation();
+              // getUserLocation();
+              panelRef.current.togglePanel()
             }}
           >
             <FeatherIcon color="white" name="map" size={35} />
           </TouchableOpacity>
-          <GooglePlacesAutocomplete
-            placeholder="Search Maps"
-            debounce={400}
-            onPress={async (data, details = null) => {
-              getCityCrimesCount(
-                details.address_components[0].short_name,
-                details.geometry.location
-              );
-              setMapInitialLocation(details.geometry.location);
-            }}
-            fetchDetails={true}
-            query={{
-              key: "AIzaSyDXUi5en6uoWnnNmuG1ttoMCRIJfghjzxw",
-            }}
-            styles={{
-              container: {
-                marginVertical: 20,
-                marginHorizontal: 0,
-                position: "absolute",
-                width: 300,
-                zIndex: 10,
-                shadowColor: "#7727c2",
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 10,
-                shadowRadius: 15,
-                borderRadius: 25,
-              },
-              poweredContainer: {
-                display: "none",
-              },
-              textInputContainer: { borderRadius: 20 },
-              textInput: {
-                position: "relative",
-                height: 48,
-                backgroundColor: "#adacb5",
-                fontSize: 16,
-                borderRadius: 20,
-              },
-              row: {
-                backgroundColor: "#adacb5",
-              },
-              predefinedPlacesDescription: { color: "red" },
-            }}
-          />
-          <View
-            style={{
-              position: "absolute",
-              right: 25,
-              top: 23,
-              color: "white",
-              zIndex: 10,
-              shadowColor: "black",
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 20,
-              shadowRadius: 5,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => {
-                navigation.navigate("Setting");
+          <View style={[styles.mapBottomContainer]}>
+            <GooglePlacesAutocomplete
+              placeholder="Search Maps"
+              debounce={400}
+              onPress={async (data, details = null) => {
+                getCityCrimesCount(
+                  details.address_components[0].short_name,
+                  details.geometry.location
+                );
+                setMapInitialLocation(details.geometry.location);
               }}
-            >
-              <FeatherIcon color="black" name="user" size={45} />
-            </TouchableOpacity>
-          </View>
-
-          {!heatmaps[0] && (
-            <Text
+              fetchDetails={true}
+              query={{
+                key: "AIzaSyDXUi5en6uoWnnNmuG1ttoMCRIJfghjzxw",
+              }}
+              styles={{
+                container: {
+                  marginVertical: 20,
+                  marginHorizontal: 0,
+                  position: "absolute",
+                  width: 300,
+                  zIndex: 10,
+                  shadowColor: "#7727c2",
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 10,
+                  shadowRadius: 15,
+                  borderRadius: 25,
+                },
+                poweredContainer: {
+                  display: "none",
+                },
+                textInputContainer: { borderRadius: 20 },
+                textInput: {
+                  position: "relative",
+                  height: 48,
+                  backgroundColor: "#adacb5",
+                  fontSize: 16,
+                  borderRadius: 20,
+                },
+                row: {
+                  backgroundColor: "#adacb5",
+                },
+                predefinedPlacesDescription: { color: "red" },
+              }}
+            />
+            <View
               style={{
-                marginTop: 140,
-                fontSize: 22,
-                fontWeight: "bold",
-                color: "black",
+                position: "absolute",
+                right: 25,
+                top: 23,
+                color: "white",
+                zIndex: 10,
+                shadowColor: "black",
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 20,
+                shadowRadius: 5,
               }}
             >
-              Enter the area you want crime data for (Scotland Only)
+              <TouchableOpacity
+                onPress={() => {
+                  navigation.navigate("Setting");
+                }}
+              >
+                <FeatherIcon color="black" name="user" size={45} />
+              </TouchableOpacity>
+            </View>
+
+            {!heatmaps[0] && (
               <Text
                 style={{
-                  marginTop: 50,
-                  fontSize: 18,
-                  fontWeight: "normal",
+                  marginTop: 140,
+                  fontSize: 22,
+                  fontWeight: "bold",
                   color: "black",
                 }}
               >
-                *Data is referencing to crimes happened in 2021 - 2022.
-              </Text>
-            </Text>
-          )}
-
-          {heatmaps[0] && (
-            <View>
-              <View style={[styles.frequencyBox]}>
+                Enter the area you want crime data for (Scotland Only)
                 <Text
                   style={{
-                    color:
-                      heatmaps[0]?.alertLevel === "High"
-                        ? "red"
-                        : heatmaps[0]?.alertLevel === "Medium"
-                        ? "yellow"
-                        : "green",
-                    marginLeft: 10,
-                    marginTop: 10,
-                    height: 20,
-                    fontWeight: "700",
-                    fontSize: 20,
-                  }}
-                >
-                  {heatmaps[0]?.alertLevel === "High"
-                    ? "Alert Level - High"
-                    : heatmaps[0]?.alertLevel === "Medium"
-                    ? "Alert Level - Medium"
-                    : "Alert Level - Low"}
-                </Text>
-
-                <Text
-                  style={{
-                    color: "gray",
-                    marginLeft: 10,
-                    marginTop: 10,
-                    height: 20,
+                    marginTop: 50,
+                    fontSize: 18,
                     fontWeight: "normal",
-                    fontSize: 10,
+                    color: "black",
                   }}
                 >
-                  Alert level is calculated using total crime report in your
-                  area and Scotland.{" "}
+                  *Data is referencing to crimes happened in 2021 - 2022.
                 </Text>
+              </Text>
+            )}
+
+            {heatmaps[0] && (
+              <View>
+                <View style={[styles.frequencyBox]}>
+                  <Text
+                    style={{
+                      color:
+                        heatmaps[0]?.alertLevel === "High"
+                          ? "red"
+                          : heatmaps[0]?.alertLevel === "Medium"
+                            ? "yellow"
+                            : "green",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 20,
+                      fontWeight: "700",
+                      fontSize: 20,
+                    }}
+                  >
+                    {heatmaps[0]?.alertLevel === "High"
+                      ? "Alert Level - High"
+                      : heatmaps[0]?.alertLevel === "Medium"
+                        ? "Alert Level - Medium"
+                        : "Alert Level - Low"}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "gray",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 20,
+                      fontWeight: "normal",
+                      fontSize: 10,
+                    }}
+                  >
+                    Alert level is calculated using total crime report in your
+                    area and Scotland.{" "}
+                  </Text>
+                </View>
+                <View style={[styles.crimeDetailsBox]}>
+                  <Text style={[styles.contentHeader]}>Crime Types</Text>
+                  <Text
+                    style={{
+                      color: "gray",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 20,
+                      fontWeight: "bold",
+                      fontSize: 15,
+                    }}
+                  >
+                    Robbery - {heatmaps[0]?.robbery}
+                  </Text>
+                  <Text
+                    style={{
+                      color: "gray",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 20,
+                      fontWeight: "bold",
+                      fontSize: 15,
+                    }}
+                  >
+                    Dishonesty Crimes - {heatmaps[0]?.dishonesty}
+                  </Text>
+                  <Text
+                    style={{
+                      color: "gray",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 20,
+                      marginBottom: 20,
+                      fontWeight: "bold",
+                      fontSize: 15,
+                    }}
+                  >
+                    Total Crime Reports - {heatmaps[0]?.weight}
+                  </Text>
+                </View>
               </View>
-              <View style={[styles.crimeDetailsBox]}>
-                <Text style={[styles.contentHeader]}>Crime Types</Text>
-                <Text
-                  style={{
-                    color: "gray",
-                    marginLeft: 10,
-                    marginTop: 10,
-                    height: 20,
-                    fontWeight: "bold",
-                    fontSize: 15,
-                  }}
-                >
-                  Robbery - {heatmaps[0]?.robbery}
-                </Text>
-                <Text
-                  style={{
-                    color: "gray",
-                    marginLeft: 10,
-                    marginTop: 10,
-                    height: 20,
-                    fontWeight: "bold",
-                    fontSize: 15,
-                  }}
-                >
-                  Dishonesty Crimes - {heatmaps[0]?.dishonesty}
-                </Text>
-                <Text
-                  style={{
-                    color: "gray",
-                    marginLeft: 10,
-                    marginTop: 10,
-                    height: 20,
-                    marginBottom: 20,
-                    fontWeight: "bold",
-                    fontSize: 15,
-                  }}
-                >
-                  Total Crime Reports - {heatmaps[0]?.weight}
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        </BottomSheet>
+
+
       </View>
     </KeyboardAvoidingView>
   );
@@ -644,7 +655,7 @@ const styles = StyleSheet.create({
   },
   map: {
     width: "100%",
-    height: "60%",
+    height: "100%",
   },
   mapBottomContainer: {
     backgroundColor: "#6d6987", //#6d6987

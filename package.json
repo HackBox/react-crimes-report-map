@@ -14,11 +14,14 @@
     "expo": "~48.0.5",
     "expo-location": "^15.1.1",
     "expo-status-bar": "~1.4.4",
+    "i": "^0.3.7",
+    "npm": "^9.6.2",
     "react": "18.2.0",
     "react-icons": "^4.8.0",
     "react-native": "0.71.3",
     "react-native-google-places-autocomplete": "^2.5.1",
-    "react-native-maps": "^1.4.0"
+    "react-native-maps": "^1.4.0",
+    "react-native-simple-bottom-sheet": "^1.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
