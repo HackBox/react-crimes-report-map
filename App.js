@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
-import MapView, { Heatmap, Marker } from "react-native-maps";
+import MapView, { Heatmap, Marker, Polygon } from "react-native-maps";
 import axios from "axios";
 import { useState, useEffect, useRef } from "react";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
@@ -7,7 +7,7 @@ import FeatherIcon from "react-native-vector-icons/Feather";
 import { KeyboardAvoidingView } from "react-native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import BottomSheet from 'react-native-simple-bottom-sheet';
+import BottomSheet from "react-native-simple-bottom-sheet";
 
 export default function App({ navigation }) {
   const [heatmaps, setHeatmaps] = useState([]);
@@ -18,6 +18,7 @@ export default function App({ navigation }) {
   });
   const [markerLocation, setMarkerLocation] = useState({});
   const panelRef = useRef(null);
+  const [isScotland, setIsScotland] = useState(false);
   async function getUserLocation() {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -45,8 +46,13 @@ export default function App({ navigation }) {
       location.remove();
     };
   }
+
   useEffect(() => {
     // getUserLocation();
+    // getUkCrimes("", {
+    //   lat: mapInitialLocation.lat,
+    //   lng: mapInitialLocation.lng,
+    // });
   }, []);
   const myMapCustomStyle = [
     {
@@ -334,10 +340,10 @@ export default function App({ navigation }) {
                 });
                 const crimeCount =
                   locationCrimeMap[
-                  Object.keys(locationCrimeMap).filter((value, index) => {
-                    if (value.includes(city.split(" ")[0].toLowerCase()))
-                      return value;
-                  })[0]
+                    Object.keys(locationCrimeMap).filter((value, index) => {
+                      if (value.includes(city.split(" ")[0].toLowerCase()))
+                        return value;
+                    })[0]
                   ];
 
                 // Getting first type of crime reports count
@@ -351,12 +357,12 @@ export default function App({ navigation }) {
                 });
                 const firstCrimeCount =
                   locationFirstCrimeMap[
-                  Object.keys(locationFirstCrimeMap).filter(
-                    (value, index) => {
-                      if (value.includes(city.split(" ")[0].toLowerCase()))
-                        return value;
-                    }
-                  )[0]
+                    Object.keys(locationFirstCrimeMap).filter(
+                      (value, index) => {
+                        if (value.includes(city.split(" ")[0].toLowerCase()))
+                          return value;
+                      }
+                    )[0]
                   ];
 
                 // Getting second type of crime reports count
@@ -370,12 +376,12 @@ export default function App({ navigation }) {
                 });
                 const secondCrimeCount =
                   locationSecondCrimeMap[
-                  Object.keys(locationSecondCrimeMap).filter(
-                    (value, index) => {
-                      if (value.includes(city.split(" ")[0].toLowerCase()))
-                        return value;
-                    }
-                  )[0]
+                    Object.keys(locationSecondCrimeMap).filter(
+                      (value, index) => {
+                        if (value.includes(city.split(" ")[0].toLowerCase()))
+                          return value;
+                      }
+                    )[0]
                   ];
 
                 // Setting the heatmap data
@@ -414,6 +420,46 @@ export default function App({ navigation }) {
       });
   };
 
+  function getNearbyCoordinates(coords, distance, coordinatesList) {
+    const earthRadius = 6371; // in kilometers
+    const filteredCoords = coordinatesList.filter((coord) => {
+      const lat1 = coords.lat;
+      const lon1 = coords.lon;
+      const lat2 = coord.lat;
+      const lon2 = coord.lon;
+
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const d = earthRadius * c;
+
+      return d <= distance;
+    });
+    return filteredCoords;
+  }
+
+  const getUkCrimes = async (city, coordinates) => {
+    const totalCoordinates = require("./csvjson.json").map((element) => {
+      return { lat: element.Latitude, lon: element.Longitude };
+    });
+    console.log(city,
+      getNearbyCoordinates(
+        {
+          lat: coordinates.lat,
+          lon: coordinates.lng,
+        },
+        100,
+        totalCoordinates
+      )
+    );
+  };
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior="padding" enabled>
       <StatusBar style="light" />
@@ -440,6 +486,35 @@ export default function App({ navigation }) {
           {heatmaps.length > 0 && (
             <Heatmap radius={50} opacity={1.0} points={heatmaps}></Heatmap>
           )}
+          {/* <Polygon
+            coordinates={[
+              {
+                latitude: mapInitialLocation.lat,
+                longitude: mapInitialLocation.lng,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              },
+              {
+                latitude: 56.6979538,
+                longitude: -2.9124057,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              },
+              {
+                latitude: 6.6979438,
+                longitude: 2.9125057,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              },
+              {
+                latitude: 26.6779438,
+                longitude: -1.9145057,
+                latitudeDelta: 0.02,
+                longitudeDelta: 0.02,
+              },
+            ]}
+            strokeWidth={5}
+          ></Polygon> */}
           {markerLocation.latitude && (
             <Marker
               coordinate={markerLocation}
@@ -453,7 +528,7 @@ export default function App({ navigation }) {
           isOpen={false}
           sliderMaxHeight={200}
           sliderMinHeight={100}
-          ref={ref => panelRef.current = ref}
+          ref={(ref) => (panelRef.current = ref)}
         >
           <TouchableOpacity
             style={{
@@ -463,7 +538,7 @@ export default function App({ navigation }) {
             }}
             onPress={() => {
               // getUserLocation();
-              panelRef.current.togglePanel()
+              panelRef.current.togglePanel();
             }}
           >
             <FeatherIcon color="white" name="map" size={35} />
@@ -473,10 +548,12 @@ export default function App({ navigation }) {
               placeholder="Search Maps"
               debounce={400}
               onPress={async (data, details = null) => {
-                getCityCrimesCount(
-                  details.address_components[0].short_name,
-                  details.geometry.location
-                );
+                isScotland
+                  ? getCityCrimesCount(
+                      details.address_components[0].short_name,
+                      details.geometry.location
+                    )
+                  : getUkCrimes(details.address_components[0].short_name, details.geometry.location);
                 setMapInitialLocation(details.geometry.location);
               }}
               fetchDetails={true}
@@ -567,8 +644,8 @@ export default function App({ navigation }) {
                         heatmaps[0]?.alertLevel === "High"
                           ? "red"
                           : heatmaps[0]?.alertLevel === "Medium"
-                            ? "yellow"
-                            : "green",
+                          ? "yellow"
+                          : "green",
                       marginLeft: 10,
                       marginTop: 10,
                       height: 20,
@@ -579,8 +656,8 @@ export default function App({ navigation }) {
                     {heatmaps[0]?.alertLevel === "High"
                       ? "Alert Level - High"
                       : heatmaps[0]?.alertLevel === "Medium"
-                        ? "Alert Level - Medium"
-                        : "Alert Level - Low"}
+                      ? "Alert Level - Medium"
+                      : "Alert Level - Low"}
                   </Text>
 
                   <Text
@@ -641,8 +718,6 @@ export default function App({ navigation }) {
             )}
           </View>
         </BottomSheet>
-
-
       </View>
     </KeyboardAvoidingView>
   );
