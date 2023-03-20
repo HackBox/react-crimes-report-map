@@ -20,6 +20,7 @@
     "react-icons": "^4.8.0",
     "react-native": "0.71.3",
     "react-native-google-places-autocomplete": "^2.5.1",
+    "react-native-loading-spinner-overlay": "^3.0.1",
     "react-native-maps": "^1.4.0",
     "react-native-simple-bottom-sheet": "^1.0.4"
   },

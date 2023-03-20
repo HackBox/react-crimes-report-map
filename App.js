@@ -8,22 +8,31 @@ import { KeyboardAvoidingView } from "react-native";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
 import BottomSheet from "react-native-simple-bottom-sheet";
+import Spinner from "react-native-loading-spinner-overlay";
 
 export default function App({ navigation }) {
   const [heatmaps, setHeatmaps] = useState([]);
   const [location, setLocation] = useState("");
   const [mapInitialLocation, setMapInitialLocation] = useState({
-    lat: 56.6979538,
-    lng: -2.9124057,
+    lat: 52.629729,
+    lng: -1.131592,
   });
   const [markerLocation, setMarkerLocation] = useState({});
   const panelRef = useRef(null);
-  const [isScotland, setIsScotland] = useState(false);
+  const [isScotland, setIsScotland] = useState(true);
+
+  const [crimes, setCrimes] = useState([]);
+  const [crimeCounts, setCrimeCounts] = useState({});
+  const [sortedCrimesCount, setSortedCrimesCount] = useState([]);
+  const [totalCrimesCount, setTotalCrimesCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [crimeLevel, setCrimeLevel] = useState();
+
   async function getUserLocation() {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
       setErrorMsg("Permission to access location was denied");
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
@@ -48,12 +57,13 @@ export default function App({ navigation }) {
   }
 
   useEffect(() => {
-    // getUserLocation();
+    getUserLocation();
     // getUkCrimes("", {
     //   lat: mapInitialLocation.lat,
     //   lng: mapInitialLocation.lng,
     // });
   }, []);
+
   const myMapCustomStyle = [
     {
       elementType: "geometry",
@@ -295,7 +305,9 @@ export default function App({ navigation }) {
       ],
     },
   ];
+
   const getCityCrimesCount = (city, coordinates) => {
+    setIsLoading(true);
     const locationCrimeMap = {};
     var totalCrimes = 0;
     const uri = `https://statistics.gov.scot/slice/observations.json?&dataset=http%3A%2F%2Fstatistics.gov.scot%2Fdata%2Frecorded-crime&http%3A%2F%2Fpurl.org%2Flinked-data%2Fcube%23measureType=http%3A%2F%2Fstatistics.gov.scot%2Fdef%2Fmeasure-properties%2Fcount&http%3A%2F%2Fstatistics.gov.scot%2Fdef%2Fdimension%2FcrimeOrOffence=http%3A%2F%2Fstatistics.gov.scot%2Fdef%2Fconcept%2Fcrime-or-offence%2Fall-crimes&http%3A%2F%2Fpurl.org%2Flinked-data%2Fsdmx%2F2009%2Fdimension%23refArea=%7B%22related%22%3A%7B%22http%3A%2F%2Fpublishmydata.com%2Fdef%2Fontology%2Fspatial%2FmemberOf%22%3A%22*%22%7D%7D&page=1&perPage=200&sortDirection=ASC`;
@@ -328,6 +340,7 @@ export default function App({ navigation }) {
                 console.log(error);
               })
               .then(function (secondCrimeData) {
+                setIsLoading(false);
                 data.data.rows.forEach((records) => {
                   locationCrimeMap[
                     records.metadata.resource.value
@@ -385,7 +398,6 @@ export default function App({ navigation }) {
                   ];
 
                 // Setting the heatmap data
-
                 if (crimeCount) {
                   const weight =
                     parseInt(crimeCount.replaceAll(",", "")) + 1000;
@@ -396,8 +408,10 @@ export default function App({ navigation }) {
                   );
 
                   if (weight >= 40000 && totalCount >= 40000 && robbery > 300) {
+                    setTotalCrimesCount(2000);
                     alertLevel = "High";
                   } else if (weight >= 20000 && totalCount >= 20000) {
+                    setTotalCrimesCount(200);
                     alertLevel = "Medium";
                   } else {
                     alertLevel = "Low";
@@ -415,68 +429,100 @@ export default function App({ navigation }) {
                     },
                   ]);
                 }
+                else{
+                  setHeatmaps([])
+                }
               });
           });
       });
   };
 
-  function getNearbyCoordinates(coords, distance, coordinatesList) {
-    const earthRadius = 6371; // in kilometers
-    const filteredCoords = coordinatesList.filter((coord) => {
-      const lat1 = coords.lat;
-      const lon1 = coords.lon;
-      const lat2 = coord.lat;
-      const lon2 = coord.lon;
-
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLon = ((lon2 - lon1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const d = earthRadius * c;
-
-      return d <= distance;
+  function sortObject(obj) {
+    var arr = [];
+    for (var prop in obj) {
+      if (obj.hasOwnProperty(prop)) {
+        arr.push({
+          key: prop,
+          value: obj[prop],
+        });
+      }
+    }
+    arr.sort(function (a, b) {
+      return b.value - a.value;
     });
-    return filteredCoords;
+    //arr.sort(function(a, b) { return a.value.toLowerCase().localeCompare(b.value.toLowerCase()); }); //use this to sort as strings
+    return arr; // returns array
   }
 
   const getUkCrimes = async (city, coordinates) => {
-    const totalCoordinates = require("./csvjson.json").map((element) => {
-      return { lat: element.Latitude, lon: element.Longitude };
-    });
-    console.log(city,
-      getNearbyCoordinates(
-        {
-          lat: coordinates.lat,
-          lon: coordinates.lng,
-        },
-        100,
-        totalCoordinates
-      )
-    );
+    setIsLoading(true);
+    fetch(
+      `https://data.police.uk/api/crimes-street/all-crime?lat=${coordinates.lat}&lng=${coordinates.lng}&date=2023-01`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        setIsLoading(false);
+        setCrimes(data);
+        const counts = {};
+        var totalCount = 0;
+        data.forEach((crime) => {
+          totalCount += 1;
+          if (counts[crime.category]) {
+            counts[crime.category] += 1;
+          } else {
+            counts[crime.category] = 1;
+          }
+        });
+
+        const sortedCounts = {};
+        const newlist = sortObject(counts);
+        newlist.forEach((obj) => {
+          sortedCounts[obj.key] = obj.value;
+        });
+        setSortedCrimesCount(newlist);
+
+        // setCrimeCounts(counts);
+        setTotalCrimesCount(totalCount);
+        if (totalCount > 0)
+          setHeatmaps([
+            {
+              // alertLevel,
+              latitude: coordinates.lat,
+              longitude: coordinates.lng,
+              weight: 500,
+              // totalCount,
+              city,
+              // robbery,
+              // dishonesty,
+            },
+          ]);
+        else setHeatmaps([]);
+      })
+      .catch((error) => console.error(error));
   };
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior="padding" enabled>
       <StatusBar style="light" />
+      <Spinner
+        visible={isLoading}
+        textContent={"Loading..."}
+        textStyle={styles.spinnerTextStyle}
+      />
       <View style={styles.container}>
         <MapView
           customMapStyle={myMapCustomStyle}
           region={{
             latitude: mapInitialLocation.lat,
             longitude: mapInitialLocation.lng,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
+            latitudeDelta: 0.002,
+            longitudeDelta: 0.002,
           }}
           initialRegion={{
             latitude: mapInitialLocation.lat,
             longitude: mapInitialLocation.lng,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
+            latitudeDelta: 0.002,
+            longitudeDelta: 0.002,
           }}
           provider={"google"}
           style={styles.map}
@@ -484,7 +530,24 @@ export default function App({ navigation }) {
           zoomControlEnabled={true}
         >
           {heatmaps.length > 0 && (
-            <Heatmap radius={50} opacity={1.0} points={heatmaps}></Heatmap>
+            <Heatmap
+              radius={totalCrimesCount > 1000 ? 50 : 30}
+              opacity={1.0}
+              gradient={
+                totalCrimesCount > 1000
+                  ? {
+                      colors: ["red", "#ff3838", "#9c0000"],
+                      startPoints: [0.1, 0.5, 1],
+                      colorMapSize: 256,
+                    }
+                  : {
+                      colors: ["#f7d2d2", "#ff8a8a", "#ff3838"],
+                      startPoints: [0.1, 0.5, 1],
+                      colorMapSize: 256,
+                    }
+              }
+              points={heatmaps}
+            />
           )}
           {/* <Polygon
             coordinates={[
@@ -525,11 +588,18 @@ export default function App({ navigation }) {
         </MapView>
 
         <BottomSheet
+          outerContentStyle={{
+            backgroundColor: "#383838",
+          }}
+          wrapperStyle={{
+            backgroundColor: "#383838",
+          }}
           isOpen={false}
-          sliderMaxHeight={200}
-          sliderMinHeight={100}
+          sliderMaxHeight={1800}
+          sliderMinHeight={130}
           ref={(ref) => (panelRef.current = ref)}
         >
+          {/* user current location icon */}
           <TouchableOpacity
             style={{
               position: "absolute",
@@ -543,6 +613,8 @@ export default function App({ navigation }) {
           >
             <FeatherIcon color="white" name="map" size={35} />
           </TouchableOpacity>
+
+          {/* Bottom sheet */}
           <View style={[styles.mapBottomContainer]}>
             <GooglePlacesAutocomplete
               placeholder="Search Maps"
@@ -553,8 +625,14 @@ export default function App({ navigation }) {
                       details.address_components[0].short_name,
                       details.geometry.location
                     )
-                  : getUkCrimes(details.address_components[0].short_name, details.geometry.location);
+                  : getUkCrimes(
+                      details.address_components[0].short_name,
+                      details.geometry.location
+                    );
                 setMapInitialLocation(details.geometry.location);
+                setTimeout(() => {
+                  panelRef.current.togglePanel();
+                }, 1000);
               }}
               fetchDetails={true}
               query={{
@@ -562,10 +640,10 @@ export default function App({ navigation }) {
               }}
               styles={{
                 container: {
-                  marginVertical: 20,
+                  marginVertical: 0,
                   marginHorizontal: 0,
                   position: "absolute",
-                  width: 300,
+                  width: 320,
                   zIndex: 10,
                   shadowColor: "#7727c2",
                   shadowOffset: { width: 0, height: 0 },
@@ -590,14 +668,14 @@ export default function App({ navigation }) {
                 predefinedPlacesDescription: { color: "red" },
               }}
             />
+            {/* Profile Icon */}
             <View
               style={{
                 position: "absolute",
-                right: 25,
-                top: 23,
                 color: "white",
+                right: -5,
                 zIndex: 10,
-                shadowColor: "black",
+                shadowColor: "white",
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 20,
                 shadowRadius: 5,
@@ -612,6 +690,7 @@ export default function App({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            {/* No data available */}
             {!heatmaps[0] && (
               <Text
                 style={{
@@ -621,7 +700,7 @@ export default function App({ navigation }) {
                   color: "black",
                 }}
               >
-                Enter the area you want crime data for (Scotland Only)
+                Enter the area you want crime data for
                 <Text
                   style={{
                     marginTop: 50,
@@ -635,8 +714,10 @@ export default function App({ navigation }) {
               </Text>
             )}
 
-            {heatmaps[0] && (
+            {/* scotland heatmaps data */}
+            {heatmaps[0] && isScotland && (
               <View>
+                {/* Highest rated crime */}
                 <View style={[styles.frequencyBox]}>
                   <Text
                     style={{
@@ -716,6 +797,81 @@ export default function App({ navigation }) {
                 </View>
               </View>
             )}
+
+            {/* UK heatmaps data */}
+            {heatmaps[0] && !isScotland && (
+              <View>
+                {/* Highest rated crime */}
+                <View style={[styles.frequencyBox]}>
+                  <Text
+                    style={{
+                      color: totalCrimesCount > 1000 ? "red" : "yellow",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 30,
+                      fontWeight: "700",
+                      fontSize: 20,
+                    }}
+                  >
+                    {totalCrimesCount > 1000
+                      ? "Alert Level - High"
+                      : "Alert Level - Medium"}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "gray",
+                      marginLeft: 10,
+                      marginTop: 10,
+                      height: 20,
+                      fontWeight: "normal",
+                      fontSize: 10,
+                    }}
+                  >
+                    {totalCrimesCount > 1000
+                      ? "Crimes noticed in this area are very high"
+                      : "This area looks safe"}
+                  </Text>
+                </View>
+
+                <View>
+                  <Text style={[styles.contentHeader]}>Crimes</Text>
+                  <View style={[styles.crimeDetailsBox]}>
+                    <Text style={[styles.contentSmallHeader]}>
+                      Top 5 Crime found here
+                    </Text>
+
+                    <View style={[styles.crimesList]}>
+                      {sortedCrimesCount.map((crime, index) => {
+                        return (
+                          index < 5 && (
+                            <Text style={[styles.crimesText]}>
+                              {crime.key.split("-").join(" ")} - {crime.value}
+                            </Text>
+                          )
+                        );
+                      })}
+                      <Text
+                        style={{
+                          color: "white",
+                          fontWeight: "600",
+                          fontSize: 20,
+                          marginBottom: 20,
+                        }}
+                      >
+                        Others -{" "}
+                        {totalCrimesCount -
+                          (sortedCrimesCount[0].value +
+                            sortedCrimesCount[1].value +
+                            sortedCrimesCount[2].value +
+                            sortedCrimesCount[3].value +
+                            sortedCrimesCount[4].value)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </BottomSheet>
       </View>
@@ -733,9 +889,9 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   mapBottomContainer: {
-    backgroundColor: "#6d6987", //#6d6987
+    backgroundColor: "#383838", //#6d6987
     width: "100%",
-    height: "40%",
+    height: "100%",
     marginVertical: 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -765,10 +921,28 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   contentHeader: {
-    color: "#93929c",
+    color: "white",
     marginLeft: 10,
     marginTop: 10,
     fontWeight: "bold",
-    fontSize: 25,
+    fontSize: 30,
+  },
+  contentSmallHeader: {
+    color: "white",
+    marginLeft: 15,
+    marginTop: 15,
+    fontWeight: "bold",
+    fontSize: 18,
+  },
+  crimesList: {
+    color: "white",
+    marginLeft: 15,
+    marginTop: 15,
+  },
+  crimesText: {
+    color: "white",
+    textTransform: "capitalize",
+    marginBottom: 10,
+    fontSize: 16,
   },
 });
